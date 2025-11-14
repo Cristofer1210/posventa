@@ -1,0 +1,8 @@
+# POS Mi Emprendimiento - Dependencias Requeridas
+# Archivo de requisitos para instalar todas las librerías necesarias
+
+# Interfaz Gráfica
+PyQt5>=5.15.0
+
+# Impresión en Windows (para tickets físicos)
+pywin32>=306

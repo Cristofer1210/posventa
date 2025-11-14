@@ -1,0 +1,16 @@
+aronium_pos/
+├── main.py
+├── database.py
+├── modules/
+│   ├── __init__.py
+│   ├── dashboard.py
+│   ├── products.py
+│   ├── sales.py
+│   ├── customers.py
+│   └── reports.py
+├── widgets/
+│   ├── __init__.py
+│   └── product_dialog.py
+└── utils/
+    ├── __init__.py
+    └── formatters.py
