@@ -4,6 +4,8 @@
 ![PyQt5](https://img.shields.io/badge/GUI-PyQt5-green.svg)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Status](https://img.shields.io/badge/Status-Completed-brightgreen.svg)
+![Windows](https://img.shields.io/badge/Platform-Windows-blue.svg)
 
 > Sistema de Punto de Venta (POS) desarrollado para pequeños comercios. Una solución completa para gestión de ventas, inventario y reportes.
 
