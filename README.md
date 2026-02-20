@@ -7,9 +7,6 @@
 
 > Sistema de Punto de Venta (POS) desarrollado para pequeños comercios. Una solución completa para gestión de ventas, inventario y reportes.
 
-## ✨ Demo Rápida
-
-*(Aquí iría un GIF mostrando el sistema en acción - puedo ayudarte a planear qué grabar)*
 
 ## 🎯 Características Destacadas
 
