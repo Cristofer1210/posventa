@@ -56,7 +56,7 @@ pip install -r requirements.txt
 
 # 4. Ejecutar
 python main.py
-=======
+
 Sistema de Punto de Venta (POS) para kiosco, desarrollado en Python con PyQt5.
 
 ## 📋 Descripción
@@ -106,44 +106,6 @@ Sistema para kiosco/
     └── formatters.py     # Formateadores (moneda, fechas)
 ```
 
-## 🚀 Instalación
-
-### Prerequisites
-
-- Python 3.8 o superior
-- Windows (para impresión de tickets)
-
-### Pasos de Instalación
-
-1. **Clonar o descargar el código**
-
-2. **Crear un entorno virtual (recomendado)**
-   
-```
-bash
-   python -m venv venv
-   
-```
-
-3. **Activar el entorno virtual**
-   
-```
-bash
-   # Windows
-   venv\Scripts\activate
-   
-   # Linux/Mac
-   source venv/bin/activate
-   
-```
-
-4. **Instalar las dependencias**
-   
-```
-bash
-   pip install -r requirements.txt
-   
-```
 
 ## ⚙️ Configuración
 
