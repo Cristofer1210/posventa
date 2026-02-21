@@ -266,5 +266,18 @@ Este proyecto es de uso libre para fines educativos y comerciales.
 **Versión**: 1.0  
 **Desarrollado con**: ❤️ para pequeños comercios
 
+## 📫 Contacto
+
+**Cristofer** - Programador Python Jr.
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Perfil-blue.svg)](https://www.linkedin.com/in/cristofer-gallay-080577264/)
+[![GitHub](https://img.shields.io/badge/GitHub-Cristofer1210-black.svg)](https://github.com/Cristofer1210)
+
+📧 **Email**: [cristofergallay62@gmail.com](mailto:cristofergallay62@gmail.com)
+
+---
+
+⭐ ¿Te gustó el proyecto? ¡No olvides dejar una estrella en GitHub! ⭐
+
 ¿Necesitas ayuda? Consulta el sistema de soporte integrado en la aplicación.
 >>>>>>> 7bd0020 (Actualización del Sistema POS - Cristofer)
