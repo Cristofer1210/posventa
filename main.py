@@ -215,28 +215,91 @@ class ModernPOS(QMainWindow):
             btn.setChecked(btn.property("module") == module_name)
             
     def check_cash_opening(self):
-        """Verificar si ya se abrió la caja hoy y manejar apertura si es necesario"""
+        """Verificar si la caja está abierta y no cerrada para hoy"""
         from datetime import datetime
-
+        
         today = datetime.now().strftime("%Y-%m-%d")
-
-        # Verificar si ya existe una apertura para hoy
-        cash_opens = self.db.get_cash_open_records(today, today)
-        if cash_opens:
-            # Ya se abrió la caja hoy
-            QMessageBox.information(self, "Caja Abierta",
-                                  f"✅ La caja ya está abierta para hoy ({today}).\nMonto inicial: ${cash_opens[0][2]:.2f}")
-            return
-
-        # Mostrar diálogo de apertura de caja
-        self.open_cash_open_dialog()
+        
+        try:
+            # Verificar aperturas y cierres para hoy
+            cash_opens = self.db.get_cash_open_records(today, today)
+            cash_closes = self.db.get_cash_close_records(today, today)
+            
+            if cash_opens and not cash_closes:
+                # ✅ CASO: Hay apertura Y NO hay cierre (caja ABIERTA)
+                opening_amount = cash_opens[0][2]
+                QMessageBox.information(self, "Caja Abierta",
+                    f"✅ La caja está ABIERTA para hoy ({today}).\n\n"
+                    f"💰 Monto inicial: ${opening_amount:.2f}\n"
+                    f"🟢 Puede comenzar a operar.")
+                return
+                
+            elif cash_opens and cash_closes:
+                # ⚠️ CASO: Hay apertura Y cierre (caja CERRADA)
+                opening_amount = cash_opens[0][2]
+                closing_amount = cash_closes[0][2]
+                
+                # Mostrar mensaje informativo
+                QMessageBox.warning(self, "Caja Cerrada",
+                    f"🔒 La caja del día {today} ya fue CERRADA.\n\n"
+                    f"💰 Monto inicial: ${opening_amount:.2f}\n"
+                    f"💵 Ingresos registrados: ${closing_amount:.2f}\n\n"
+                    f"📊 Puede ver el detalle en el módulo 'Caja'.\n"
+                    f"🔄 Si necesita operar hoy, debe realizar una NUEVA APERTURA.")
+                
+            elif not cash_opens:
+                # 🆕 CASO: No hay apertura para hoy
+                reply = QMessageBox.question(self, "Apertura de Caja Requerida",
+                    f"❌ No hay apertura de caja para hoy ({today}).\n\n"
+                    f"¿Desea realizar la apertura ahora?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes)
+                
+                if reply == QMessageBox.Yes:
+                    self.open_cash_open_dialog()
+                else:
+                    QMessageBox.information(self, "Recordatorio",
+                        "Puede abrir la caja en cualquier momento desde el módulo 'Caja'.\n"
+                        "⚠️ Recuerde que NO podrá registrar ventas sin tener la caja abierta.")
+        
+        except Exception as e:
+            print(f"Error en check_cash_opening: {e}")
+            QMessageBox.warning(self, "Error",
+                f"Error al verificar estado de caja:\n{str(e)}")
 
     def open_cash_open_dialog(self):
-        """Mostrar diálogo para apertura de caja"""
-        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QFrame
+        """Mostrar diálogo para apertura de caja - VERSIÓN CORREGIDA"""
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox
         from PyQt5.QtCore import Qt
         from datetime import datetime
 
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # ⚠️ NUEVO: Verificar estado actual de caja
+        try:
+            cash_opens = self.db.get_cash_open_records(today, today)
+            cash_closes = self.db.get_cash_close_records(today, today)
+            
+            if cash_opens and not cash_closes:
+                # Caso: Ya está abierta
+                QMessageBox.warning(self, "Caja ya abierta",
+                    f"⚠️ La caja ya está ABIERTA para hoy.\n"
+                    f"No es necesario abrirla nuevamente.")
+                return
+                
+            elif cash_opens and cash_closes:
+                # Caso: Estaba abierta y cerrada (puede reabrir)
+                reply = QMessageBox.question(self, "Reapertura de Caja",
+                    f"⚠️ La caja del día {today} fue abierta y cerrada anteriormente.\n\n"
+                    f"¿Desea realizar una NUEVA APERTURA?",
+                    QMessageBox.Yes | QMessageBox.No)
+                
+                if reply == QMessageBox.No:
+                    return
+        except Exception as e:
+            print(f"Error verificando estado de caja: {e}")
+
+        # Continuar con el diálogo normal
         dialog = QDialog(self)
         dialog.setWindowTitle("🔓 Apertura de Caja")
         dialog.setModal(True)
@@ -253,8 +316,8 @@ class ModernPOS(QMainWindow):
         layout.addWidget(title)
 
         # Fecha actual
-        today = datetime.now().strftime("%d de %B de %Y")
-        date_label = QLabel(f"📅 Fecha: {today}")
+        today_str = datetime.now().strftime("%d de %B de %Y")
+        date_label = QLabel(f"📅 Fecha: {today_str}")
         date_label.setAlignment(Qt.AlignCenter)
         date_label.setStyleSheet("font-size: 14px; color: #6b7280;")
         layout.addWidget(date_label)
@@ -326,34 +389,75 @@ class ModernPOS(QMainWindow):
         dialog.exec_()
 
     def confirm_cash_open(self, dialog):
-        """Confirmar apertura de caja"""
+        """Confirmar apertura de caja - VERSIÓN CORREGIDA"""
         try:
             amount_text = self.opening_amount_input.text().strip()
             if not amount_text:
                 QMessageBox.warning(dialog, "Monto Requerido",
-                                  "Por favor ingrese el monto inicial de la caja.")
+                                "Por favor ingrese el monto inicial de la caja.")
                 return
 
             amount = float(amount_text)
             if amount < 0:
                 QMessageBox.warning(dialog, "Monto Inválido",
-                                  "El monto inicial no puede ser negativo.")
+                                "El monto inicial no puede ser negativo.")
                 return
 
             # Registrar apertura de caja
             from datetime import datetime
             today = datetime.now().strftime("%Y-%m-%d")
-
-            self.db.insert_cash_open_record(today, amount, "Apertura automática al iniciar sesión")
-
-            QMessageBox.information(dialog, "✅ Caja Abierta",
-                                  f"¡Caja abierta exitosamente!\n\nMonto inicial: ${amount:.2f}")
-
-            dialog.accept()
+            
+            # ⚠️ NUEVO: Verificar estado actual antes de insertar
+            try:
+                # Verificar aperturas existentes
+                cash_opens = self.db.get_cash_open_records(today, today)
+                cash_closes = self.db.get_cash_close_records(today, today)
+                
+                if cash_opens and not cash_closes:
+                    # Caso: Ya hay apertura y NO hay cierre (caja abierta)
+                    QMessageBox.warning(dialog, "Caja ya abierta",
+                        f"⚠️ La caja para hoy ({today}) ya está ABIERTA.\n"
+                        f"No se puede realizar otra apertura.")
+                    dialog.reject()
+                    return
+                    
+                elif cash_opens and cash_closes:
+                    # Caso: Hubo apertura y cierre (reapertura)
+                    # Esto es válido, continuar con la nueva apertura
+                    reply = QMessageBox.question(dialog, "Confirmar Reapertura",
+                        f"⚠️ La caja del día {today} fue abierta y cerrada anteriormente.\n\n"
+                        f"¿Confirma que desea realizar una NUEVA APERTURA con monto ${amount:.2f}?",
+                        QMessageBox.Yes | QMessageBox.No)
+                    
+                    if reply == QMessageBox.No:
+                        dialog.reject()
+                        return
+                        
+                # Si llegamos aquí, proceder con la apertura
+                self.db.insert_cash_open_record(today, amount, "Apertura desde interfaz")
+                
+                QMessageBox.information(dialog, "✅ Caja Abierta",
+                    f"¡Caja abierta exitosamente!\n\n"
+                    f"📅 Fecha: {today}\n"
+                    f"💰 Monto inicial: ${amount:.2f}\n\n"
+                    f"🟢 Puede comenzar a operar.")
+                
+                dialog.accept()
+                
+                # Opcional: Actualizar algún indicador en la interfaz si es necesario
+                
+            except Exception as db_error:
+                QMessageBox.critical(dialog, "Error de Base de Datos",
+                    f"Error al verificar/guardar en base de datos:\n{str(db_error)}")
+                dialog.reject()
 
         except ValueError:
             QMessageBox.warning(dialog, "Monto Inválido",
-                              "Por favor ingrese un monto válido (número).")
+                            "Por favor ingrese un monto válido (número).")
+        except Exception as e:
+            QMessageBox.critical(dialog, "Error Inesperado",
+                f"Error inesperado:\n{str(e)}")
+            dialog.reject()
 
     def closeEvent(self, event):
         self.db.close_connection()
@@ -394,15 +498,16 @@ def main():
     palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
     app.setPalette(palette)
 
+    # Solo para desarrollo: descomentar para resetear la base de datos
     # Reset database to start completely clean (no products, no sales, no cash records)
-    try:
-        import os
-        db_name = "kiosco_pos.db"
-        if os.path.exists(db_name):
-            os.remove(db_name)
-            print("Base de datos reseteada - comenzando completamente limpia")
-    except Exception as e:
-        print(f"Error al resetear base de datos: {e}")
+    #try:
+    #    import os
+    #    db_name = "kiosco_pos.db"
+    #    if os.path.exists(db_name):
+    #        os.remove(db_name)
+    #        print("Base de datos reseteada - comenzando completamente limpia")
+    #except Exception as e:
+    #    print(f"Error al resetear base de datos: {e}")
 
     # Mostrar diálogo de login
     login_dialog = LoginDialog()

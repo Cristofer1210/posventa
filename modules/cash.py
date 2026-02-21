@@ -164,29 +164,48 @@ class CashModule:
         layout.addWidget(group)
 
     def load_cash_data(self):
-        """Cargar datos de caja"""
+        """Cargar datos de caja - VERSIÓN MEJORADA"""
         try:
             today = datetime.now().strftime("%Y-%m-%d")
-
-            # Verificar si hay apertura hoy
+            
+            # Verificar aperturas y cierres
             open_records = self.db.get_cash_open_records(today, today)
             close_records = self.db.get_cash_close_records(today, today)
-
+            
             if open_records:
                 opening_amount = open_records[0][2]
-                status_text = f"✅ Caja ABIERTA - Monto inicial: {format_currency(opening_amount)}"
-
+                
                 if close_records:
+                    # ⚠️ CASO: Hay apertura Y cierre (caja cerrada)
                     closing_amount = close_records[0][2]
-                    status_text += f" | Cierre: {format_currency(closing_amount)}"
+                    status_text = (f"🔒 Caja CERRADA - Monto inicial: {format_currency(opening_amount)} | "
+                                f"Cierre: {format_currency(closing_amount)}")
+                    status_color = "#f59e0b"  # Naranja para cerrada
+                else:
+                    # ✅ CASO: Hay apertura y NO cierre (caja abierta)
+                    status_text = f"✅ Caja ABIERTA - Monto inicial: {format_currency(opening_amount)}"
+                    status_color = "#10b981"  # Verde para abierta
             else:
+                # ❌ CASO: No hay apertura
                 status_text = "❌ Caja CERRADA - No se ha abierto hoy"
-
+                status_color = "#ef4444"  # Rojo para cerrada sin apertura
+            
+            # Actualizar el label con color
             self.status_label.setText(status_text)
-
-            # Cargar historial reciente (últimos 10 registros)
+            self.status_label.setStyleSheet(f"""
+                QLabel {{
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: {status_color};
+                    padding: 15px;
+                    border-radius: 8px;
+                }}
+            """)
+            
+            # Cargar historial reciente
             self.load_recent_history()
-
+            
         except Exception as e:
             self.status_label.setText(f"Error cargando datos: {str(e)}")
             print(f"Error en load_cash_data: {e}")
@@ -234,51 +253,64 @@ class CashModule:
             print(f"Error cargando historial: {e}")
 
     def open_cash_dialog(self):
-        """Diálogo para apertura de caja"""
+        """Diálogo para apertura de caja - VERSIÓN MEJORADA"""
         current_date = datetime.now().strftime("%Y-%m-%d")
-
-        # Verificar si ya existe una apertura para hoy
+        
         try:
+            # Verificar aperturas existentes
             open_records = self.db.get_cash_open_records(current_date, current_date)
-            if open_records:
+            close_records = self.db.get_cash_close_records(current_date, current_date)
+            
+            if open_records and not close_records:
+                # Caso: Ya hay apertura y no hay cierre
                 QMessageBox.warning(self.widget, "Apertura Ya Existente",
-                                    f"Ya existe una apertura de caja para la fecha: {current_date}")
+                    f"⚠️ Ya existe una apertura de caja para hoy.\n"
+                    f"La caja está actualmente ABIERTA.")
                 return
+                
+            elif open_records and close_records:
+                # Caso: Ya hubo apertura y cierre (puede reabrir)
+                reply = QMessageBox.question(self.widget, "Reapertura de Caja",
+                    f"⚠️ La caja del día {current_date} ya fue abierta y cerrada.\n\n"
+                    f"¿Desea realizar una NUEVA APERTURA para seguir operando?\n"
+                    f"(Se registrará como una nueva apertura)",
+                    QMessageBox.Yes | QMessageBox.No)
+                
+                if reply == QMessageBox.No:
+                    return
+            
+            # Solicitar monto de apertura
+            from PyQt5.QtWidgets import QInputDialog
+            
+            opening_amount, ok = QInputDialog.getDouble(
+                self.widget,
+                "🔓 Apertura de Caja",
+                f"Ingrese el monto de apertura para la fecha: {current_date}",
+                value=0.00,
+                decimals=2,
+                min=0.00,
+                max=999999.99
+            )
+            
+            if not ok:
+                return
+                
+            # Confirmar
+            reply = QMessageBox.question(
+                self.widget,
+                "Confirmar Apertura",
+                f"¿Confirmar apertura con monto {format_currency(opening_amount)}?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                self.db.insert_cash_open_record(current_date, opening_amount, "Apertura manual")
+                QMessageBox.information(self.widget, "✅ Éxito",
+                    f"Apertura registrada: {format_currency(opening_amount)}")
+                self.load_cash_data()
+                
         except Exception as e:
-            QMessageBox.critical(self.widget, "Error de Base de Datos", f"No se pudo verificar aperturas existentes:\n{e}")
-            return
-
-        # Solicitar el monto de apertura
-        opening_amount, ok = QInputDialog.getDouble(
-            self.widget,
-            "🔓 Apertura de Caja",
-            f"Ingrese el monto de apertura para la fecha: {current_date}",
-            value=0.00,
-            decimals=2,
-            min=0.00,
-            max=999999.99
-        )
-
-        if not ok:
-            return
-
-        # Confirmar la apertura
-        reply = QMessageBox.question(
-            self.widget,
-            "Confirmar Apertura de Caja",
-            f"¿Confirmar apertura de caja para {current_date} con monto inicial de {format_currency(opening_amount)}?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            try:
-                # Llama al método de database.py para insertar el registro de apertura
-                self.db.insert_cash_open_record(current_date, opening_amount)
-                QMessageBox.information(self.widget, "Éxito", f"Apertura de caja registrada exitosamente.\nMonto inicial: {format_currency(opening_amount)}")
-                self.load_cash_data()  # Recargar datos
-            except Exception as e:
-                QMessageBox.critical(self.widget, "Error de Apertura", f"Error al guardar la apertura de caja:\n{e}")
+            QMessageBox.critical(self.widget, "Error", f"Error en apertura:\n{e}")
 
     def close_cash_dialog(self):
         """Diálogo para cierre de caja con reporte detallado"""
@@ -304,6 +336,18 @@ class CashModule:
         except Exception as e:
             QMessageBox.critical(self.widget, "Error de Base de Datos", f"No se pudo calcular el resumen de caja:\n{e}")
             return
+
+        # ⚠️ NUEVO: Verificar si ya hay un cierre para hoy
+        try:
+            existing_closes = self.db.get_cash_close_records(current_date, current_date)
+            if existing_closes:
+                QMessageBox.warning(self.widget, "Caja ya cerrada",
+                    f"⚠️ La caja del día {current_date} ya fue cerrada anteriormente.\n\n"
+                    f"Si necesita reabrir la caja, puede hacer una nueva apertura desde el botón 'Apertura de Caja'.")
+                return
+        except Exception as e:
+            print(f"Error verificando cierres existentes: {e}")
+
 
         # Crear diálogo personalizado para el cierre de caja
         dialog = QDialog(self.widget)
@@ -431,20 +475,32 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
     def confirm_cash_close(self, dialog, date, total_income, report_content):
         """Confirmar cierre de caja y guardar reporte"""
         try:
+            # ⚠️ NUEVO: Doble verificación antes de guardar
+            existing_closes = self.db.get_cash_close_records(date, date)
+            if existing_closes:
+                QMessageBox.warning(dialog, "Caja ya cerrada",
+                    f"⚠️ La caja para la fecha {date} ya fue cerrada.\n"
+                    f"No se puede guardar otro cierre.")
+                dialog.reject()
+                return
+            
             # Guardar el registro de cierre en la base de datos
-            self.db.insert_cash_close_record(date, total_income, report_content)
-
+            self.db.insert_cash_close_record(date, total_income, "Cierre de caja manual")
+            
+            # ⚠️ IMPORTANTE: También marcar de alguna forma que la caja está cerrada
+            # Podrías agregar un campo en la tabla cash_opens para indicar que está cerrada
+            # Pero por ahora, con el registro en cash_closes es suficiente
+            
             QMessageBox.information(dialog, "✅ Caja Cerrada",
-                                  f"Caja cerrada exitosamente para la fecha {date}.\n\n"
-                                  f"Ingreso total registrado: {format_currency(total_income)}\n\n"
-                                  f"El reporte detallado ha sido guardado.")
+                f"✅ Caja cerrada exitosamente para la fecha {date}.\n\n"
+                f"Ingreso total registrado: {format_currency(total_income)}")
 
             dialog.accept()
             self.load_cash_data()  # Recargar datos
 
         except Exception as e:
             QMessageBox.critical(dialog, "Error de Cierre",
-                               f"Error al guardar el cierre de caja:\n{e}")
+                f"❌ Error al guardar el cierre de caja:\n{e}")
 
     def show_daily_report(self):
         """Mostrar reporte diario"""
