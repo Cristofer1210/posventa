@@ -1,6 +1,6 @@
 # 🏪 Sistema POS - Mi Emprendimiento
 
-<<<<<<< HEAD
+
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![PyQt5](https://img.shields.io/badge/GUI-PyQt5-green.svg)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey.svg)
